@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html ng-app="app">
+
+<head>
+  <meta charset="utf-8">
+  <title>type</title>
+
+  <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.css">
+  <style>
+    .display-name {
+      font-weight: bolder
+    }
+
+    .name,
+    .publish-status {
+      font-size: smaller;
+      color: gray
+    }
+
+    h1 {
+      border-bottom: 4px solid #0006;
+    }
+
+    h2 {
+      border-bottom: 2px solid #0002
+    }
+
+    .type {
+      margin: 8px;
+      padding: 10px;
+      border: 1px solid lightgray;
+      border-radius: 8px;
+    }
+  </style>
+
+</head>
+
+<body ng-controller="controller" ng-cloak>
+  <div ng-switch="typeId == null">
+    <md-content class="typeid-not-specified" ng-switch-when="true">
+      <div>
+        typeid is not specified.
+      </div>
+      <div>
+        <h2>Usage</h2>
+        <pre>
+          {{getUrlToTypeOf(34)}}
+        </pre>
+      </div>
+    </md-content>
+
+    <md-content class="type" ng-switch-when="false" ng-init="fetchType()">
+      <md-content class="header" layout="row" layout-align="space-between center">
+        <div ng-init="prevTypeId = typeId - 1">
+          <md-button ng-disabled="prevTypeId < 0" class="md-primary" ng-click="gotoTypeOf(prevTypeId)">
+            {{prevTypeId}}
+          </md-button>
+        </div>
+        <div>
+          <h1 class="type-name">{{type.name}}</h1>
+        </div>
+        <div ng-init="nextTypeId = typeId + 1">
+          <md-button class="md-primary" ng-click="gotoTypeOf(nextTypeId)">
+            {{nextTypeId}}
+          </md-button>
+        </div>
+      </md-content>
+      <span class="publish-status" ng-show="!type.published">(not published)</span>
+      <md-tabs md-left-tabs md-dynamic-height>
+
+        <md-tab label="overview">
+          <md-content>
+            <div class="description" ng-bind-html="type.description"></div>
+            <md-list class="md-dense">
+              <md-list-item ng-repeat="(key, value) in type">
+                <div flex>
+                  {{key}}
+                </div>
+                <div flex>
+                  {{value}}
+                </div>
+                <md-divider></md-divider>
+              </md-list-item>
+            </md-list>
+          </md-content>
+        </md-tab>
+
+        <md-tab label="attributes">
+          <md-content>
+            <div ng-switch="type.dogma_attributes != null">
+              <div ng-switch-when="true">
+                <md-button class="md-primary" ng-show="!attributes" ng-click="fetchAttributes()">fetch attributes</md-button>
+              </div>
+              <div ng-switch-when="false"> (no attributes) </div>
+            </div>
+            <md-list class="md-dense" ng-if="attributes">
+              <md-list-item class="name-value-pair" ng-repeat="attribute in attributes | orderBy:'attributeInfo.name'" layout="row">
+                <div flex>
+                  <md-tooltip>{{attribute.attributeInfo.description || '-'}}</md-tooltip>
+                  <span class="display-name">{{attribute.attributeInfo.display_name}}</span>
+                  <span class="name">{{attribute.attributeInfo.name}}</span>
+                </div>
+                <div flex>
+                  <md-tooltip> default: {{attribute.attributeInfo.default_value}} </md-tooltip>
+                  <span> {{attribute.value}} </span>
+                  <md-divider ng-show="!$last"></md-divider>
+                </div>
+              </md-list-item>
+            </md-list>
+          </md-content>
+        </md-tab>
+
+        <md-tab label="effects">
+          <md-content>
+            <div ng-switch="type.dogma_effects != null">
+              <div ng-switch-when="true">
+                <md-button class="md-primary" ng-show="!effects" ng-click="fetchEffects()">fetch effects</md-button>
+              </div>
+              <div ng-switch-when="false"> (no effects) </div>
+            </div>
+            <md-list class="md-dense" ng-if="effects">
+              <md-list-item class="name-value-pair" ng-repeat="effect in effects | orderBy:'effectInfo.name'" layout="row">
+                <div flex layout="row" layout-align="start">
+                  <md-tooltip>{{effect.effectInfo.description || '-'}}</md-tooltip>
+                  <span class="display-name">{{effect.effectInfo.display_name}}</span>
+                  <span class="name"> {{effect.effectInfo.name}} </span>
+                </div>
+                <div class="col">{{effect.is_default}}</div>
+                <md-divider ng-show="!$last"></md-divider>
+              </md-list-item>
+            </md-list>
+          </md-content>
+        </md-tab>
+      </md-tabs>
+    </md-content>
+  </div>
+
+
+
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.10/lodash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.7.2/angular.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.2/angular-resource.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-animate.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-aria.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-messages.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.js"></script>
+  <script>
+    'use strict';
+
+    //polyfills
+    (function() {
+      Number.isInteger = Number.isInteger || function(value) {
+        return typeof value === 'number' && 
+          isFinite(value) && 
+          Math.floor(value) === value;
+      };
+
+      Number.isSafeInteger = Number.isSafeInteger || function (value) {
+        return Number.isInteger(value) && Math.abs(value) <= Number.MAX_SAFE_INTEGER;
+      };
+    })();
+
+    angular.module('app', ['ngResource', 'ngMaterial', 'ngMessages']);
+    (function (module) {
+
+      module.controller('controller', ['$scope', '$sce', 'esi', function ($scope, $sce, esi) {
+        (function () {
+          const params = uriParams.parse(window.location.href);
+          $scope.typeId = parseInt(params['typeid'], 10);
+          if (!Number.isSafeInteger($scope.typeId)) {
+            $scope.typeId = null;
+          }
+          $scope.queryOptions = {
+            language: params['language'] || null
+          }
+        })();
+
+        const defaultQueryOptions = (function () {
+          const options = {};
+          if ($scope.queryOptions.language) options.language = $scope.queryOptions.language;
+          return options;
+        })();
+
+        $scope.fetchType = function () {
+          $scope.type = esi.fetchType($scope.typeId, defaultQueryOptions);
+          $scope.type.$promise.then(function (result) {
+            if (result.description) result.description = $sce.trustAsHtml(result.description);
+            return result;
+          });
+        }
+
+        $scope.fetchAttributes = function () {
+          if (!$scope.type) throw new Error('type is not set');
+          if (!$scope.type.dogma_attributes) throw new Error('type of ' + $scope.type.name + ' has no attributes');
+          $scope.attributes = $scope.type.dogma_attributes.map(function (e) {
+            return angular.extend({}, e, {
+              attributeInfo: esi.fetchAttribute(e, defaultQueryOptions)
+            });
+          });
+        };
+
+        $scope.fetchEffects = function () {
+          if (!$scope.type) throw new Error('type is not set');
+          if (!$scope.type.dogma_effects) throw new Error('type of ' + $scope.type.name + ' has no effects');
+          $scope.effects = $scope.type.dogma_effects.map(function (e) {
+            return angular.extend({}, e, {
+              effectInfo: esi.fetchEffect(e, defaultQueryOptions)
+            });
+          });
+        };
+
+        $scope.getUrlToTypeOf = function (typeId) {
+          return 'type.html' + uriParams.create(angular.extend({}, $scope.queryOptions, {
+            typeid: typeId
+          }));
+        }
+
+        $scope.gotoTypeOf = function(typeId) {
+          window.location = $scope.getUrlToTypeOf(typeId);
+        }
+
+        $scope.test = function(newPath) {
+          $location.path(newPath);
+        }
+      }]);
+
+      module.service('esi', ['$resource', '$q', function ($resource, $q) {
+        const commonDefaultQueryParams = {
+          datasource: 'tranquility'
+        };
+        const esiRoot = 'https://esi.evetech.net/latest/';
+
+        const type = $resource(esiRoot + 'universe/types/:typeId', commonDefaultQueryParams);
+        const attribute = $resource(esiRoot + 'dogma/attributes/:attributeId/', commonDefaultQueryParams);
+        const effect = $resource(esiRoot + 'dogma/effects/:effectId/', commonDefaultQueryParams);
+
+        this.fetchType = function (typeId, options) {
+          if (typeof typeId !== 'number') throw new Error('typeId ' + typeId + ' is not a number');
+          return type.get(angular.extend({}, options, { typeId: typeId }));
+        };
+
+        this.fetchAttribute = function (dogma, options) {
+          return attribute.get(angular.extend({}, options, { attributeId: dogma.attribute_id }));
+        };
+
+        this.fetchEffect = function (dogma, options) {
+          return effect.get(angular.extend({}, options, { effectId: dogma.effect_id }));
+        };
+
+      }]);
+    })(angular.module('app'));
+
+    const uriParams = (function() {
+      function decode(str) {
+        return decodeURIComponent(str);
+      }
+
+      function encode(str) {
+        return encodeURIComponent(str).replace(/[!'()*]/g, function (c) {
+          return '%' + c.charCodeAt(0).toString(16);
+        });
+      }
+
+      function parse(url) {
+        const startIndex = url.indexOf('?');
+        if (startIndex < 0) return {};
+        let endIndex = url.indexOf('#', startIndex);
+        if (endIndex < 0) endIndex = url.length;
+        const queryString = url.substring(startIndex + 1, endIndex)
+        const keyValuePairs = queryString.split('&').map(function(spec) {
+          const keyAndValue = spec.split('=', 2);
+          if (keyAndValue.length != 2) return null;
+          return {
+            key: decode(keyAndValue[0]),
+            value: decode(keyAndValue[1])
+          };
+        }).filter(function(pair) {
+          return pair != null;
+        });
+        const ret = {};
+        for(let i = 0, length = keyValuePairs.length; i < length; i++) {
+          const key = keyValuePairs[i].key;
+          const value = keyValuePairs[i].value;
+          if (ret.hasOwnProperty(key)) {
+            if (!(ret[key] instanceof Array)) ret[key] = [ret[key]];
+            ret[key].push(value);
+          } else {
+            ret[key] = value;
+          }
+        }
+        return ret;
+      }
+
+      function create(paramMap) {
+        const pairs = _.toPairs(paramMap).filter(function (pair) { return pair[1] != null; });
+        const paramSpecifiers = pairs.map(function (pair) {
+          return encode(pair[0]) + '=' + encode(pair[1])
+        });
+        return '?' + paramSpecifiers.join('&');
+      }
+
+      return {
+        parse: parse,
+        create: create
+      };
+    })();
+
+
+  </script>
+</body>
+</html>
