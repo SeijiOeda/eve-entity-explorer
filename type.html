@@ -83,14 +83,9 @@
           </md-content>
         </md-tab>
 
-        <md-tab label="attributes">
+        <md-tab label="attributes" ng-disabled="type.dogma_attributes == null">
           <md-content>
-            <div ng-switch="type.dogma_attributes != null">
-              <div ng-switch-when="true">
-                <md-button class="md-primary" ng-show="!attributes" ng-click="fetchAttributes()">fetch attributes</md-button>
-              </div>
-              <div ng-switch-when="false"> (no attributes) </div>
-            </div>
+            <md-button class="md-primary" ng-show="!attributes" ng-click="fetchAttributes()">fetch attributes</md-button>
             <md-list class="md-dense" ng-if="attributes">
               <md-list-item class="name-value-pair" ng-repeat="attribute in attributes | orderBy:'attributeInfo.name'" layout="row">
                 <div flex>
@@ -108,14 +103,9 @@
           </md-content>
         </md-tab>
 
-        <md-tab label="effects">
+        <md-tab label="effects" ng-disabled="type.dogma_effects == null">
           <md-content>
-            <div ng-switch="type.dogma_effects != null">
-              <div ng-switch-when="true">
-                <md-button class="md-primary" ng-show="!effects" ng-click="fetchEffects()">fetch effects</md-button>
-              </div>
-              <div ng-switch-when="false"> (no effects) </div>
-            </div>
+            <md-button class="md-primary" ng-show="!effects" ng-click="fetchEffects()">fetch effects</md-button>
             <md-list class="md-dense" ng-if="effects">
               <md-list-item class="name-value-pair" ng-repeat="effect in effects | orderBy:'effectInfo.name'" layout="row">
                 <div flex layout="row" layout-align="start">
